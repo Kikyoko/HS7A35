@@ -1,15 +1,15 @@
 //////////////////////////////////////////////////////////////////////////////////////////
 // Copyright (c) 2020 Kikyoko
 // https://github.com/Kikyoko
-// 
-// Module   : FPGA_DEFINE
-// Device   : Xilinx/Altera
+//
+// Module   : CLK_RST
+// Device   : Xilinx
 // Author   : Kikyoko
 // Contact  : Kikyoko@outlook.com
-// Date     : 2021/2/24 17:57:15
+// Date     : 2021/3/4 14:07:48
 // Revision : 1.00 - Simulation correct
 //
-// Description  : fpga define file
+// Description  : Clock and reset generate
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -21,28 +21,54 @@
 // all copies or substantial portions of the Software.
 //////////////////////////////////////////////////////////////////////////////////////////
 
-// =========================================================================================================================================
-// Project
-// =========================================================================================================================================
-`timescale 1ns/1ps
+`include "FPGA_DEFINE.vh"
 
-`define _DEVICE_XILINX
-//`define _DEVICE_ALTERA
-
-//FPGA Ver.
-`define _product_code       8'h01
-`define _major_ver          8'h01
-`define _minor_ver          8'h01
-`define _build_id           8'h02
-
-`define _FRAC_SYS_CLK       200
+module CLK_RST (
+    //Hardware clock & reset
+    input               hard_clk        ,
+    input               hard_rst_n      ,
+    
+    //clock & reset output
+    output              sys_clk         ,
+    output              sys_rst
+);
 
 // =========================================================================================================================================
-// reg
+// Signal
 // =========================================================================================================================================
+wire                clk_200         ;
+wire                s_mmcm_lock     ;
+wire                s_hrst          ;
 
+logic   [  7:0]     r_sys_rst_8ff   ;
+logic               r_sys_rst       ;
 
 // =========================================================================================================================================
-// Parameter
+// Output generate
 // =========================================================================================================================================
-`define _UART_BAUD          500000
+assign sys_clk  = clk_200;
+
+// =========================================================================================================================================
+// Logic
+// =========================================================================================================================================
+MMCM_SYS_CLK u_MMCM_SYS_CLK (
+    .clk_in1    ( hard_clk      ),
+    .reset      ( ~hard_rst_n   ),
+    .clk_out1   ( clk_200       ), //200M
+    .locked     ( s_mmcm_lock   )
+);
+assign s_hrst   = ~hard_rst_n | ~s_mmcm_lock;
+
+always @ (posedge sys_clk or posedge s_hrst) begin
+    if (s_hrst) begin
+        r_sys_rst_8ff   <= 8'hFF;
+        r_sys_rst       <= 1'b1;
+    end else begin
+        r_sys_rst_8ff   <= (r_sys_rst_8ff << 1);
+        r_sys_rst       <= |r_sys_rst_8ff;
+    end
+end
+
+BUFG u_SYS_RST (.I(r_sys_rst), .O(sys_rst));
+
+endmodule
