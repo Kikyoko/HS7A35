@@ -62,6 +62,11 @@ logic               W25QXX_tx_valid     ;
 logic   [  7:0]     W25QXX_rx_data      ;
 logic               W25QXX_rx_valid     ;
 
+//use XADC read temperature
+logic   [  7:0]     s_temperature       ;
+logic               s_temp_warnning     ;
+logic               s_temp_alert        ;
+
 // =========================================================================================================================================
 // Logic
 // =========================================================================================================================================
@@ -115,7 +120,22 @@ SYS_REG (
     .reg_we             ( reg_we            ),
     .reg_re             ( reg_re            ),
     .reg_rdata          ( reg_rdata         ),
-    .reg_rvalid         ( reg_rvalid        )
+    .reg_rvalid         ( reg_rvalid        ),
+    
+    //XADC temperature
+    .i_temperature      ( s_temperature     )
 );
+
+//use XADC read temperature
+XADC_TEMP u_XADC_TEMP (
+    //global clock & reset
+    .xadc_clk           ( sys_clk           ), //200M
+    .xadc_rst           ( sys_rst           ),
+    
+    .o_temperature      ( s_temperature     ), //{1-signed,7-temp_value}
+    .o_temp_warnning    ( s_temp_warnning   ), //temp>70 warnning, temp<60 warnning cancel         
+    .o_temp_alert       ( s_temp_alert      )  //temp>85 alert, temp<70 alert cancel 
+);
+
 
 endmodule

@@ -23,82 +23,62 @@
 
 `include "FPGA_DEFINE.vh"
 
-module SYS_REG (
+module TEMP_TO_ASIC (
     //global clock & reset
-    input               sys_clk             ,
-    input               sys_rst             ,
-    
-    //REG bus
-    input   [  7:0]     reg_addr            ,
-    input   [ 31:0]     reg_wdata           ,
-    input               reg_we              ,
-    input               reg_re              ,
-    output  [ 31:0]     reg_rdata           ,
-    output              reg_rvalid          ,
+    input               clk                 ,
+    input               rst                 ,
     
     //XADC temperature
-    input   [  7:0]     i_temperature
+    input   [  7:0]     i_xadc_temp         , //{1-signed,7-temp_value}
+    output  [ 31:0]     o_reg_temp            //latency = 10
 );
 
 // =========================================================================================================================================
 // Signal
 // =========================================================================================================================================
-//System register write
-logic   [ 31:0]     r_reg_rw_test   ;
-
-//System register read
-logic   [ 31:0]     r_reg_rdata     ;
-logic               r_reg_rvalid    ;
-
-//XADC temprature to ascii
-logic   [ 31:0]     s_reg_temperature   ;
+logic   [ 15:0]     s_BCD_temp      ;
+logic               s_BCD_vld       ;
+logic   [  8:0]     r_signed_9ff    ;
+logic   [ 31:0]     r_reg_temp      ;
 
 // =========================================================================================================================================
 // output generate
 // =========================================================================================================================================
-assign reg_rdata    = r_reg_rdata;
-assign reg_rvalid   = r_reg_rvalid;
+assign o_reg_temp = r_reg_temp;
 
 // =========================================================================================================================================
 // Logic
 // =========================================================================================================================================
-//System register write
-always @ (posedge sys_clk) begin
-    if (sys_rst) begin
-        r_reg_rw_test   <= 'd0;
-    end else begin
-        //reg read/write test
-        if (reg_we & (reg_addr == `_reg_rw_test)) begin
-            r_reg_rw_test   <= reg_wdata;
-        end
-    end
-end
-
-//System register read
-always @ (posedge sys_clk) begin
-    if (sys_rst) begin
-        r_reg_rdata     <= 32'd0;
-        r_reg_rvalid    <= 1'b0;
-    end else begin
-        case (reg_addr)
-            `_reg_fpga_ver      : r_reg_rdata <= {`_product_code,`_major_ver,`_minor_ver,`_build_id};
-            `_reg_rw_test       : r_reg_rdata <= r_reg_rw_test;
-            `_reg_temperature   : r_reg_rdata <= s_reg_temperature;
-        endcase
-        r_reg_rvalid    <= reg_re;
-    end
-end
-
-//XADC temprature to ascii
-TEMP_TO_ASIC u_TEMP_TO_ASIC (
-    //global clock & reset
-    .clk                ( sys_clk           ),
-    .rst                ( sys_rst           ),
+//Binary to BCD
+B_TO_BCD # (
+    .WIDTH          ( 8             )
+) u_B_TO_BCD (
+    .clk            ( clk           ),
+    .rst            ( rst           ),
     
-    //XADC temperature
-    .i_xadc_temp        ( i_temperature     ), //{1-signed,7-temp_value}
-    .o_reg_temp         ( s_reg_temperature )  //latency = 10
+    .o_binary_ready (               ),
+    .i_binary_data  ( i_xadc_temp   ),
+    .i_binary_vld   ( 1'b1          ),
+    
+    .o_BCD_data     ( s_BCD_temp    ), //must < 9999
+    .o_BCD_vld      ( s_BCD_vld     )  //latency = WIDTH + 1
 );
+
+//signed FF
+always @ (posedge clk) begin
+    r_signed_9ff    <= {r_signed_9ff[7:0],i_xadc_temp[7]};
+end
+
+//output FF
+always @ (posedge clk) begin
+    if (s_BCD_vld) begin
+        r_reg_temp[ 7: 0]   <= {4'd3,s_BCD_temp[ 3:0]};        
+        r_reg_temp[15: 8]   <= {4'd3,s_BCD_temp[ 7:4]};        
+        r_reg_temp[23:16]   <= {4'd3,s_BCD_temp[11:8]};        
+        r_reg_temp[31:24]   <= r_signed_9ff[8] ? 8'h2D : 8'h20;
+    end
+end
+
 
 endmodule
 
