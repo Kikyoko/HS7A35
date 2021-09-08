@@ -52,8 +52,8 @@ assign sys_clk  = clk_200;
 // Logic
 // =========================================================================================================================================
 MMCM_SYS_CLK u_MMCM_SYS_CLK (
-    .clk_in1    ( hard_clk      ),
     .reset      ( ~hard_rst_n   ),
+    .clk_in1    ( hard_clk      ),
     .clk_out1   ( clk_200       ), //200M
     .locked     ( s_mmcm_lock   )
 );
@@ -64,8 +64,8 @@ always @ (posedge sys_clk or posedge s_hrst) begin
         r_sys_rst_8ff   <= 8'hFF;
         r_sys_rst       <= 1'b1;
     end else begin
-        r_sys_rst_8ff   <= (r_sys_rst_8ff << 1);
-        r_sys_rst       <= |r_sys_rst_8ff;
+        r_sys_rst_8ff   <= (r_sys_rst_8ff >> 1);
+        r_sys_rst       <= r_sys_rst_8ff[0];
     end
 end
 

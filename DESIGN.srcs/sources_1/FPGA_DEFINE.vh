@@ -26,14 +26,27 @@
 // =========================================================================================================================================
 `timescale 1ns/1ps
 
+//include tcl define file
+`include "TCL_DEFINE.vh"
+
 `define _DEVICE_XILINX
+`define _DEVICE_A7
 //`define _DEVICE_ALTERA
+//`define _DEVICE_ULTRA
+
+//`define _SMALL_AREA         //CHN: 节省LUT的代价是访存模块为同步时钟域
+
+//`define _USE_URAM
+
+//`define _DEBUG_EN
+
+`define _TEST_RANDOM_SEED   20210202
 
 //FPGA Ver.
 `define _product_code       8'h01
 `define _major_ver          8'h01
 `define _minor_ver          8'h01
-`define _build_id           8'h04
+`define _build_id           8'h05
 
 `define _FRAC_SYS_CLK       200
 
@@ -47,4 +60,4 @@
 // =========================================================================================================================================
 // Parameter
 // =========================================================================================================================================
-`define _UART_BAUD          500000
+`define _UART_BAUD          115200
